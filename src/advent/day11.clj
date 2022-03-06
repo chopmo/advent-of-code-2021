@@ -82,3 +82,24 @@
          (reset-values os flashed)]
         (recur (flash-all os new-flashers)
                (concat flashed new-flashers))))))
+
+(defn puzzle11-1 []
+  (first (last (take 100 (drop 1 (iterate step [0 (read-octopuses)]))))))
+
+
+(defn step-new-flashes [[_ octopuses]]
+  (loop [os      (inc-all octopuses)
+         flashed []]
+    (let [new-flashers (diff (find-flashers os) flashed)]
+      (if (empty? new-flashers)
+        [(count flashed)
+         (reset-values os flashed)]
+        (recur (flash-all os new-flashers)
+               (concat flashed new-flashers))))))
+
+(defn puzzle11-2 []
+  (let [os (read-octopuses)
+        num-os (* (num-rows os) (num-cols os))]
+    (inc
+     (count (take-while (fn [[cnt _]] (< cnt num-os))
+                        (drop 1 (iterate step-new-flashes [0 os])))))))
