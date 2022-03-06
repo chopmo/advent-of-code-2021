@@ -18,35 +18,40 @@
 (defn valid-path? [allow-one-double-visit? path]
   (let [pruned-path      (filter small-cave? path)
         freqs            (frequencies pruned-path)
-        small-cave-freqs (dissoc freqs "start" "end")]
+        small-cave-freqs (dissoc freqs "start" "end")
+        visited-more-than (fn [visits]
+                            (->> small-cave-freqs
+                                 (filter (fn [[_ v]] (> v visits)))
+                                 count))]
     (and
      ;; start and end visited at most once
      (<= (get freqs "start" 0) 1)
      (<= (get freqs "end" 0) 1)
 
      ;; No small cave visited more than twice
-     (empty? (filter (fn [[_ v]] (> v 2)) small-cave-freqs))
+     (zero? (visited-more-than 2))
 
      ;; Maybe allow at most 1 small cave visited twice
-     (if allow-one-double-visit?
-       (<= (->> small-cave-freqs
-                (filter (fn [[_ v]] (= v 2)))
-                count)
-           1)
-       (zero? (->> small-cave-freqs
-                   (filter (fn [[_ v]] (> v 1)))
-                   count))))))
+     (<= (visited-more-than 1)
+         (if allow-one-double-visit? 1 0)))))
 
-(defn find-paths [connections path]
+(defn find-paths [allow-one-double-visit? connections path]
   (let [last-node (last path)]
     (if (= last-node "end")
       [path]
-      (let [possible-paths (map #(concat path [%])
-                                (connections-from connections last-node))]
-        (mapcat #(find-paths connections %)
-                (filter (partial valid-path? false) possible-paths))))))
+      (->> (connections-from connections last-node)
+           (map #(concat path [%]))
+           (filter (partial valid-path? allow-one-double-visit?))
+           (mapcat #(find-paths allow-one-double-visit? connections %))))))
 
 (defn puzzle12-1 []
   (count
-   (find-paths (read-connections "resources/input12.txt")
+   (find-paths false
+               (read-connections "resources/input12.txt")
+               ["start"])))
+
+(defn puzzle12-2 []
+  (count
+   (find-paths true
+               (read-connections "resources/input12.txt")
                ["start"])))
