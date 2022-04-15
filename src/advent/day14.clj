@@ -93,21 +93,52 @@
     (p ::take
        (take (inc @cursor) polymer))))
 
+(defn add-in-map [m k v]
+  (assoc m k (+ (get m k 0) v)))
+
+;; Now we move around counts of pair instead of trying to flesh out
+;; the entire polymer.
+(defn step5 [rules pair-counts]
+  (reduce (fn [agg [pair cnt]]
+            (let [el (get rules pair)
+                  p1 [(first pair) el]
+                  p2 [el (second pair)]]
+              (if el
+                (-> agg
+                    (add-in-map p1 cnt)
+                    (add-in-map p2 cnt))
+                (assoc agg pair 1))))
+          {}
+          pair-counts))
+
+(defn count-pairs
+  "I'm inserting a fake pair at the end to make sure we count the last
+  element."
+  [template]
+  (into {}
+        (concat
+         (reduce (fn [agg [a b]]
+                   (assoc agg
+                          [a b]
+                          (inc (get agg [a b] 0))))
+                 {}
+                 (partition 2 1 template))
+         [[[(last template) nil] 1]])))
+
+(defn count-elements
+  "Here we need to 'keep identity' to get rid of the fake nil element."
+  [pair-counts]
+  (keep identity
+        (reduce (fn [agg [[e _] cnt]]
+                  (assoc agg
+                         e
+                         (+ cnt (get agg e 0))))
+                {}
+                pair-counts)))
 
 (defn puzzle14-2 []
   (let [{:keys [template rules]} (read-input "resources/day14.txt")
-        polymer                  (last (take 41 (iterate (partial step4 rules) (vec template))))
-        freqs                    (sort-by second (frequencies polymer))]
-    (- (-> freqs last second)
-       (-> freqs first second))))
-
-(comment
-  (profile {} (puzzle14-2))
-
-  (let [{:keys [template rules]} (read-input "resources/day14-example.txt")
-        polymers                  (take 3 (iterate (partial step4 rules) (vec template)))
-        ]
-    polymers)
-
-
-  ,)
+        pair-counts (first (drop 40 (iterate (partial step5 rules) (count-pairs template))))
+        element-counts (sort (map second (count-elements pair-counts)))]
+    (- (last element-counts)
+       (first element-counts))))
