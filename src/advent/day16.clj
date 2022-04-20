@@ -82,3 +82,23 @@
 (defn puzzle16-1 []
   (let [stream (atom (read-input "resources/day16.txt"))]
     (sum-versions (read-packet stream))))
+
+(defn get-operator [p]
+  (case (:type p)
+    0 +
+    1 *
+    2 min
+    3 max
+    5 (fn [a b] (if (> a b) 1 0))
+    6 (fn [a b] (if (< a b) 1 0))
+    7 (fn [a b] (if (= a b) 1 0))))
+
+(defn value [p]
+  (if (= 4 (:type p))
+    (:literal p)
+    (let [op (get-operator p)]
+      (apply op (map value (:subpackets p))))))
+
+(defn puzzle16-2 []
+  (let [stream (atom (read-input "resources/day16.txt"))]
+    (value (read-packet stream))))
