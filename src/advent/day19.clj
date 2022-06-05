@@ -42,6 +42,9 @@
   (for [i (range 4)]
     (partial rot-z (* i (/ math/PI 2)))))
 
+(defn negate-coord [c]
+  (map #(* -1 %) c))
+
 (def viewpoint-fns
   (let [pi-halves (/ math/PI 2)]
     [identity                      ;; Look into z
@@ -91,13 +94,18 @@
         translated-beacons (map (partial translate distance) reoriented-beacons)]
     (clojure.set/union world (set translated-beacons))))
 
-(defn merge-scanners [world scanner-q]
+(defn merge-scanners [world scanner-positions scanner-q]
   (if (empty? scanner-q)
-    (count world)
+    {:count (count world)
+     :positions scanner-positions}
     (let [scanner (peek scanner-q)]
-      (if (overlapping? world scanner)
-        (merge-scanners (merge-beacons world scanner) (pop scanner-q))
-        (merge-scanners world (conj (pop scanner-q) scanner))))))
+      (if-let [dist (transform-and-find-distance world scanner)]
+        (merge-scanners (merge-beacons world scanner)
+                        (conj scanner-positions (negate-coord dist))
+                        (pop scanner-q))
+        (merge-scanners world
+                        scanner-positions
+                        (conj (pop scanner-q) scanner))))))
 
 
 ;;; ********* TESTS *********
@@ -125,3 +133,22 @@
                     (apply conj
                            (clojure.lang.PersistentQueue/EMPTY)
                            (rest scanners)))))
+
+(defn manhattan [[x1 y1 z1] [x2 y2 z2]]
+  (+ (Math/abs (- x2 x1))
+     (Math/abs (- y2 y1))
+     (Math/abs (- z2 z1))))
+
+(defn puzzle19-2 []
+  (let [scanners (read-input "resources/day19.txt")
+        positions (:positions
+                   (merge-scanners (set (first scanners))
+                    [[0 0 0]]
+                    (apply conj
+                           (clojure.lang.PersistentQueue/EMPTY)
+                           (rest scanners))))]
+    (-> (for [p1 positions
+              p2 positions]
+          (manhattan p1 p2))
+        sort
+        last)))
